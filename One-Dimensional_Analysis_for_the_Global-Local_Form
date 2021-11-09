@@ -1,0 +1,104 @@
+%-----------------------------------------------------------------------
+% MMDM (Material Modeling and Damage Mechanics) Lab
+% Fadi Aldakheel & Nima Noii
+% Leibniz Universität Hannover
+% Institute of Continuum Mechanics
+%
+%-----------------------------------------------------------------------
+% One-Dimensional Analysis for the Global-Local Formulation in MATLAB
+%-----------------------------------------------------------------------
+%
+% Theory @ "Multilevel Global-Local techniques for adaptive ductile phase-field fracture"
+%
+%
+%=============================
+% Initialization
+%=============================
+L=1;A=1;          % Length//the cross-sectional area
+E1=10;l1=L;       % local Young's modulus  for 0<x<L
+E2=2*E1;l2=L;     % local Young's modulus  for L<x<2L 
+E3=3*E1;l3=8*L;   % global Young's modulus        
+tau=0.1;          % applied traction force at the global level  
+TOL=1E-6;        % tolerance of iterative GL         
+%-----------------------------
+uR=[];uG=[];uL=[];
+resi=[];    
+residual=1;
+i=0;
+k1=(E1*A)/L;         
+k2=(E2*A)/L;         
+k3=(E3*A)/6*L; 
+%=============================
+% Reference
+%=============================
+KR=[k1 -k1 0 0;...
+-k1 k1+k2 -k2 0;...
+0 -k2 k2+k3 -k3;...
+0  0 -k3 k3];                    % Jacobian
+uR0=KR(2:end,2:end)\[0 0 tau]';  % reference solution displacement
+uR=[0;uR0];
+%=============================
+% Assembeled Jacobian
+%=============================
+KG=[3*k3 -3*k3 0;...
+-3*k3 4*k3 -k3;...
+0 -k3 k3];                    % global Jacobian
+KL=[k1 -k1 0;
+-k1 k1+k2 -k2;
+0 -k2 k2];                    % local Jacobian
+KF=[3*k3 -3*k3;-3*k3 3*k3];   % fictitious Jacobian
+uG0=KG(2:end,2:end)\[0;tau];  % initial global solution
+uGamma=uG0(1);                % initial uGamma 
+%=============================
+% To perform iterative GL formulation
+%=============================
+while residual>TOL
+i=i+1;    
+%-----------------------------
+% Local with Dirichlet B.C.
+%-----------------------------
+uL2=uGamma*(k2/(k1+k2));   % updated local solution at local node 2
+uL=[0,uL2,uGamma]';        % updated local solution
+rL=KL*uL;                  % updated local reaction force
+lambdaL=rL(3);
+%-----------------------------
+% Fictitious with Dirichlet B.C.
+%-----------------------------
+uF=[0,uGamma]';            % updated fictitious solution
+rF=KF*uF;                  % updated fictitious reaction force
+lambdaF=rF(2);
+rT=lambdaF-lambdaL;        % updated interface residual
+%-----------------------------
+% Global with Neumann B.C.
+%-----------------------------
+uG0=KG(2:end,2:end)\[rT;tau];
+uG=[0;uG0];                % updated global solution
+uGamma=uG0(1);             % updated interface solution
+%-----------------------------
+% GL residual indicator
+%-----------------------------
+residual=norm(uGamma-uR(3));
+resi(i)=residual;
+%-----------------------------
+% Saving the results
+%-----------------------------
+mat_uL(:,i)=uL;
+mat_uG(:,i)=uG;
+end
+%
+%=============================
+% Plot residual behaviour//reference, global and local displacements
+%=============================
+%
+figure;plot(log10(resi),'LineWidth',2);title('Convergence behavior of the GL')
+%-------------------
+figure;plot([0,1,2,8],uR,'DisplayName','Reference u','LineWidth',2);hold on;
+plot([0,1,2],mat_uL(:,1),'DisplayName','Local u','LineWidth',2);hold on;
+plot([0,2,8],mat_uG(:,1),'DisplayName','Global u','LineWidth',2);title('initial displacement solutions')
+%-------------------
+figure;plot([0,1,2,8],uR,'DisplayName','Reference u','LineWidth',2);hold on;
+plot([0,1,2],mat_uL(:,i),'DisplayName','Local u','LineWidth',2);hold on;
+plot([0,2,8],mat_uG(:,i),'DisplayName','Global u','LineWidth',2);title('Converged displacement solutions')
+%=============================
+%
+%
