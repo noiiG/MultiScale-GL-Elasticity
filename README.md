@@ -1,4 +1,4 @@
-# Noii-Aldakheel
+# Noii et al.
 Compact MATLAB Open-Source Code for Global-Local Approach: One-Dimensional Elasticity.
 
 @article{noiialdakheelgl2021,
